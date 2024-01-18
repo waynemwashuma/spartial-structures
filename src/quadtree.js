@@ -1,13 +1,5 @@
 import { Utils, Overlaps, Vector2, Err, BoundingBox } from "../chaos.module.js"
-
-export class Client {
-  bounds = new BoundingBox()
-  position = new Vector2()
-  node = null
-  constructor(body) {
-    this.body = body
-  }
-}
+import { Client } from "./client.js"
 
 export class Node {
   /**@type {Node[]}*/
