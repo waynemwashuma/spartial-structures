@@ -1,5 +1,4 @@
-import { Overlaps, Vector2, Err, BoundingBox} from "./chaos.module.js"
-import { Utils } from "./chaos.module.js"
+import { Utils, Overlaps, Vector2, Err, BoundingBox } from "../chaos.module.js"
 
 export class Client {
   bounds = new BoundingBox()
@@ -23,7 +22,7 @@ export class Node {
   bounds = null
   /**
    * @param {BoundingBox} bounds
-  */
+   */
   constructor(bounds) {
     this.bounds = bounds
   }
@@ -193,8 +192,8 @@ export class QuadTree {
   _remove(client, node) {
     let objects = client.node.objects
     const index = objects.indexOf(client)
-    const removed = Utils.removeElement(objects,index)
-    if(removed === null)return false
+    const removed = Utils.removeElement(objects, index)
+    if (removed === null) return false
     return true
   }
   /**
@@ -223,12 +222,12 @@ export class QuadTree {
    * @param {Node} [node]
    * @returns {Body[]}
    */
-  query(bounds, target = [] ,node = this._root) {
+  query(bounds, target = [], node = this._root) {
     if (!node.intersects(bounds))
       return target
     if (!node.isLeafNode()) {
       for (let i = 0; i < node.children.length; i++) {
-        this.query(bounds, target,node.children[i])
+        this.query(bounds, target, node.children[i])
       }
     }
     for (let i = 0; i < node.objects.length; i++) {
@@ -315,7 +314,6 @@ export class QuadTree {
     })
   }
   /**
-   * @inheritdoc
    * @param {CollisionPair[]} target Empty array to store results.
    * @@param {Node} node 
    * */
@@ -366,15 +364,4 @@ export class QuadTree {
       e => this.split(depth - 1, e)
     )
   }
-}
-
-export function renderObj(ctx, client) {
-  const w = (client.bounds.max.x - client.bounds.min.x)
-  const h = (client.bounds.max.y - client.bounds.min.y)
-  ctx.strokeRect(
-    client.bounds.min.x,
-    client.bounds.min.y,
-    w,
-    h
-  )
 }
