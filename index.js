@@ -226,3 +226,4 @@ function bounceoff(obj) {
   if (obj.bounds.min.y < canvasBound.min.y || obj.bounds.min.y > canvasBound.max.y)
     obj.velocity.y = -obj.velocity.y
 }
+console.log(aabbtree)

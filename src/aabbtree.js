@@ -24,16 +24,13 @@ class Node {
   left = null
   right = null
   bounds = new BoundingBox()
-  constructor(value) {
-    this.value = value
-  }
   static union(node1, node2, out = new Node()) {
     BoundingBox.union(node1.bounds, node2.bounds, out.bounds)
     return out
   }
 }
 export class AabbTree {
-  _pool = new NodePool(100)
+  _pool = new NodePool(1)
   constructor(padding = new Vector()) {
     this.root = null
     this.padding = padding
@@ -51,7 +48,8 @@ export class AabbTree {
   }
   _resolveNode(node, parent = this.root) {
     if (!parent.left) {
-      const newParent = new Node()
+      //const newParent = new Node()
+      const newParent = this._pool.give()
       const oldParent = parent
 
       if (oldParent.parent === null) {
@@ -81,8 +79,8 @@ export class AabbTree {
   }
   _insert(client) {
     client.bounds.copy(client.body.bounds)
-    //const node = this._pool.give()
-    const node = new Node()
+    const node = this._pool.give()
+    //const node = new Node()
     node.value = client
     client.node = node
     node.bounds.copy(client.bounds)
@@ -111,8 +109,8 @@ export class AabbTree {
     if (node.parent === null) return
     this._adjustBounds(node.parent)
 
-    //this._pool.take(node)
-    //this._pool.take(parent)
+    this._pool.take(node)
+    this._pool.take(parent)
   }
   _swapRemove(node1, node2) {
     node1.parent = node2.parent
@@ -167,14 +165,14 @@ export class AabbTree {
   }
   clear(node = this.root) {
     this.root = null
-    //this._clear()
+    this._clear(node)
   }
   _clear(node) {
     if (node.left) {
-      this.clear(node.left)
-      this.clear(node.right)
+      this._clear(node.left)
+      this._clear(node.right)
     }
-    //this.pool.take(node)
+    this._pool.take(node)
   }
 }
 
