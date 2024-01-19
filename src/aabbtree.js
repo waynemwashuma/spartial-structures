@@ -1,7 +1,23 @@
 import { Utils, Vector2, Overlaps, BoundingBox, clamp } from "../chaos.module.js"
 import { Client } from "./client.js"
 import { renderObj } from "./utils.js"
+import { Pool } from "./objectPool.js"
 
+class NodePool extends Pool {
+  constructor(n) {
+    super(n)
+  }
+  create() {
+    return new Node()
+  }
+  destroy(node) {
+    node.parent = null
+    node.value = null
+    node.left = null
+    node.right = null
+    return node
+  }
+}
 class Node {
   value = null
   parent = null
@@ -17,6 +33,7 @@ class Node {
   }
 }
 export class AabbTree {
+  _pool = new NodePool(100)
   constructor(padding = new Vector()) {
     this.root = null
     this.padding = padding
@@ -41,7 +58,7 @@ export class AabbTree {
         this.root = newParent
       } else if (parent.parent.left === parent) {
         parent.parent.left = newParent
-      } else if (parent.parent.right === parent) {
+      } else {
         parent.parent.right = newParent
       }
 
@@ -56,17 +73,17 @@ export class AabbTree {
       this._adjustBounds(node.parent)
     }
     if (parent.left) {
-      let leftcost = this._cost(node, parent.left)
-      let rightcost = this._cost(node, parent.right)
-
-      if (leftcost > rightcost)
-        return this._resolveNode(node, parent.right)
-      this._resolveNode(node, parent.left)
+      const leftcost = this._cost(node, parent.left)
+      const rightcost = this._cost(node, parent.right)
+      const bestParent = leftcost > rightcost ? parent.right : parent.left
+      this._resolveNode(node, bestParent)
     }
   }
   _insert(client) {
     client.bounds.copy(client.body.bounds)
-    const node = new Node(client)
+    //const node = this._pool.give()
+    const node = new Node()
+    node.value = client
     client.node = node
     node.bounds.copy(client.bounds)
 
@@ -94,8 +111,8 @@ export class AabbTree {
     if (node.parent === null) return
     this._adjustBounds(node.parent)
 
-    //recycle node here.
-    //recycle the parent here
+    //this._pool.take(node)
+    //this._pool.take(parent)
   }
   _swapRemove(node1, node2) {
     node1.parent = node2.parent
@@ -114,8 +131,8 @@ export class AabbTree {
     this._remove(client)
   }
   update(objs) {
+    this.clear()
     for (let i = 0; i < objs.length; i++) {
-      this._remove(objs[i].client)
       this._insert(objs[i].client)
     }
   }
@@ -132,10 +149,9 @@ export class AabbTree {
   }
   traverseAll(func, out, node = this.root) {
     if (node == null) return
-    func(node, out)
     this.traverseAll(func, out, node.left)
     this.traverseAll(func, out, node.right)
-
+    return func(node, out)
   }
   draw(ctx) {
     this.traverseAll(node => {
@@ -148,6 +164,17 @@ export class AabbTree {
       ctx.strokeStyle = "white"
       renderObj(ctx, node.value.bounds)
     })
+  }
+  clear(node = this.root) {
+    this.root = null
+    //this._clear()
+  }
+  _clear(node) {
+    if (node.left) {
+      this.clear(node.left)
+      this.clear(node.right)
+    }
+    //this.pool.take(node)
   }
 }
 
