@@ -84,9 +84,9 @@ export class HashGrid {
     }
   }
   query(bounds) {}
-  traverseAll(func,out) {
+  traverseAll(func, out) {
     for (let i = 0; i < this.bins.length; i++) {
-      func(this.bins[i],out)
+      func(this.bins[i], out)
     }
   }
   draw(ctx) {
@@ -127,7 +127,7 @@ export class HashGrid {
       const bin = this.bins[i]
 
       for (let j = 0; j < bin.length; j++) {
-        renderObj(ctx, bin[j])
+        renderObj(ctx, bin[j].bounds)
       }
     }
   }

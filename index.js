@@ -1,21 +1,22 @@
 import { Renderer2D, Vector2, BoundingBox, rand } from "./chaos.module.js"
-import { QuadTree, HashGrid } from "./src/index.js"
+import { QuadTree, HashGrid,AabbTree } from "./src/index.js"
 
 
 const renderer = new Renderer2D()
 renderer.setViewport(innerWidth, innerHeight)
-renderer.play()
+setTimeout(_=>renderer.play())
 document.body.append(renderer.domElement)
 const bounds = new BoundingBox(
   100, 100,
   renderer.width - 100, renderer.height - 100
 )
-const tree = new QuadTree(bounds, 3);
+const quadtree = new QuadTree(bounds, 3);
+const aabbtree = new AabbTree(new Vector2(15,15))
 const grid = new HashGrid(100, 100, 20, 20, new Vector2(100, 100))
 
 
 
-renderDemo1()
+renderDemo7()
 
 //spatialHashgrid
 function renderDemo1() {
@@ -72,7 +73,7 @@ function renderDemo2() {
 //quadtree 
 function renderDemo3() {
   const obj = createObj(250, 550, 300, 600)
-  tree.insert(obj)
+  quadtree.insert(obj)
   let r = 0
   let length = 3
   const speed = 0.01
@@ -85,17 +86,17 @@ function renderDemo3() {
         )
       )
       
-      tree.update([obj])
+      quadtree.update([obj])
       r += speed
-      tree.draw(ctx)
+      quadtree.draw(ctx)
     }
   })
 }
 function renderDemo4() {
   const obj = createObj(250, 550, 300, 600)
   const obj2 = createObj(750, 480, 800, 580)
-  tree.insert(obj)
-  tree.insert(obj2)
+  quadtree.insert(obj)
+  quadtree.insert(obj2)
   let r = 0
   let length = 3
   const speed = 0.01
@@ -113,11 +114,96 @@ function renderDemo4() {
           length * Math.cos(-r)
         )
       )
-      tree.update([obj, obj2])
+      quadtree.update([obj, obj2])
       r += speed
 
 
-      tree.draw(ctx)
+      quadtree.draw(ctx)
+    }
+  })
+}
+
+//aabbtree
+function renderDemo5() {
+  const obj = createObj(250, 550, 300, 600)
+  aabbtree.insert(obj)
+  let r = 0
+  let length = 3
+  const speed = 0.01
+  renderer.add({
+    render(ctx) {
+      obj.bounds.translate(
+        new Vector2(
+          length * Math.sin(r),
+          length * Math.cos(r)
+        )
+      )
+      
+      aabbtree.update([obj])
+      r += speed
+      aabbtree.draw(ctx)
+    }
+  })
+}
+function renderDemo6() {
+  const obj = createObj(250, 550, 300, 600)
+  const obj2 = createObj(750, 480, 800, 580)
+  aabbtree.insert(obj)
+  aabbtree.insert(obj2)
+  let r = 0
+  let length = 3
+  const speed = 0.01
+  renderer.add({
+    render(ctx) {
+      obj.bounds.translate(
+        new Vector2(
+          length * Math.sin(r),
+          -length * Math.cos(r)
+        )
+      )
+      obj2.bounds.translate(
+        new Vector2(
+          length * Math.sin(-r),
+          length * Math.cos(-r)
+        )
+      )
+      aabbtree.update([obj, obj2])
+      r += speed
+
+
+      aabbtree.draw(ctx)
+    }
+  })
+}
+function renderDemo7() {
+  const obj = createObj(250, 550, 300, 600)
+  const obj2 = createObj(750, 480, 800, 580)
+  const obj3 = createObj(450, 480, 500, 540)
+  aabbtree.insert(obj)
+  aabbtree.insert(obj2)
+  aabbtree.insert(obj3)
+  let r = 0
+  let length = 3
+  const speed = 0.01
+  renderer.add({
+    render(ctx) {
+      obj.bounds.translate(
+        new Vector2(
+          length * Math.sin(r),
+          -length * Math.cos(r)
+        )
+      )
+      obj2.bounds.translate(
+        new Vector2(
+          length * Math.sin(-r),
+          length * Math.cos(-r)
+        )
+      )
+      aabbtree.update([obj,obj2,obj3])
+      r += speed
+
+
+      aabbtree.draw(ctx)
     }
   })
 }
@@ -133,3 +219,4 @@ function createRandom(bounds, width, height) {
 
   return createObj(minX, minY, minX + rand() * width, minY + rand() * height)
 }
+console.log(aabbtree)
