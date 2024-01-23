@@ -19,7 +19,7 @@ const canvasBound = new BoundingBox(
   renderer.height - 50
 )
 
-renderDemo7()
+renderDemo4()
 
 //spatialHashgrid
 function renderDemo1() {

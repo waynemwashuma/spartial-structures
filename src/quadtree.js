@@ -1,4 +1,6 @@
-import { Utils, Overlaps, Vector2, Err, BoundingBox } from "../chaos.module.js"
+import { Overlaps, Vector2, BoundingBox } from "../chaos.module.js"
+import { Err } from "../chaos.module.js"
+import { Utils } from "../chaos.module.js"
 import { Client } from "./client.js"
 
 export class Node {
@@ -55,15 +57,6 @@ export class Node {
    * @param {Bounds} bounds
    * @return {boolean}
    */
-  intersects(bounds) {
-    if (bounds.r)
-      return Overlaps.AABBvsSphere(this.bounds, bounds)
-    return Overlaps.AABBColliding(this.bounds, bounds)
-  }
-  /**
-   * @param {Bounds} bounds
-   * @return {boolean}
-   */
   contains(bounds) {
     return (
       bounds.max.x < this.bounds.max.x &&
@@ -72,27 +65,6 @@ export class Node {
       bounds.min.y > this.bounds.min.y
     )
   }
-  /**
-   * @param {Bounds} bounds
-   * @param {Body[]} [target]
-   * @returns {boolean}
-   */
-  query(bounds, target = []) {
-    if (!this.intersects(bounds))
-      return target
-    if (!this.isLeafNode()) {
-      for (var i = 0; i < this.children.length; i++) {
-        this.children[i].query(bounds, target)
-      }
-    }
-    for (var i = 0; i < this.objects.length; i++) {
-      let a = this.objects[i]
-      if (a.bounds.intersects(bounds))
-        target.push(a)
-    }
-    return target
-  }
-
   /**
    * @param {Vector_like} position
    * @returns boolean
@@ -110,27 +82,11 @@ export class Node {
   isRootNode() {
     return !this.parent
   }
-  /**
-   * @template T
-   * @param {traverser} func
-   * @param {T[]} [out]
-   *  @returns []
-   */
-  traverseAll(func, out) {
-    if (!this.isLeafNode()) {
-      for (var i = 0; i < 4; i++) {
-        this.children[i].traverseAll(func, out)
-      }
-    }
-    func(this, out)
-    return out
-  }
 }
 
 /**
  * This is a bounded broadphase that is used to speed up collision testing on sparse number of objects over a large area.
- * 
- * @extends Broadphase
+ *
  */
 export class QuadTree {
   /**
@@ -209,34 +165,42 @@ export class QuadTree {
   }
   /**
    * @inheritdoc
-   * @param {Bounds} bounds Region to check in.
+   * @param {BoundingBox} bounds Region to check in.
    * @param {Body[]} [target] Empty array to store results.
    * @param {Node} [node]
    * @returns {Body[]}
    */
   query(bounds, target = [], node = this._root) {
-    if (!node.intersects(bounds))
+    if (!Overlaps.AABBColliding(node.bounds, bounds))
       return target
-    if (!node.isLeafNode()) {
-      for (let i = 0; i < node.children.length; i++) {
-        this.query(bounds, target, node.children[i])
-      }
+    if (node.children.length) {
+      this.query(bounds, target, node.children[0])
+      this.query(bounds, target, node.children[1])
+      this.query(bounds, target, node.children[2])
+      this.query(bounds, target, node.children[3])
     }
     for (let i = 0; i < node.objects.length; i++) {
       const objects = node.objects[i]
-      if (objects.bounds.intersects(bounds))
+      if (Overlaps.colliding(objects.bounds, bounds))
         target.push(a)
     }
     return target
   }
   /**
-   * A depth first search of the quadtree that applies the given function to its nodes.
-   * 
-   * @param {traverser} func The function that checks every node unless it returns true.
-   * 
+   * @template T
+   * @param {traverser<T>} func
+   * @param {T} [out]
+   *  @returns {T}
    */
-  traverseAll(func) {
-    return this._root.traverseAll(func)
+  traverseAll(func, out = [], node = this._root) {
+    if (node.children.length) {
+      this.traverseAll(func, out, node.children[0])
+      this.traverseAll(func, out, node.children[1])
+      this.traverseAll(func, out, node.children[2])
+      this.traverseAll(func, out, node.children[3])
+    }
+    func(node, out)
+    return out
   }
   /**
    * @inheritdoc
@@ -246,7 +210,7 @@ export class QuadTree {
     ctx.beginPath()
     ctx.lineWidth = 5
     ctx.strokeStyle = "blue"
-    this._root.traverseAll(node => {
+    this.traverseAll(node => {
       const w = (node.bounds.max.x - node.bounds.min.x)
       const h = (node.bounds.max.y - node.bounds.min.y)
       ctx.strokeRect(
@@ -257,7 +221,7 @@ export class QuadTree {
       )
     })
     ctx.strokeStyle = "red"
-    this._root.traverseAll(node => {
+    this.traverseAll(node => {
       if (!node.hasObjects || node.objects.length === 0) return
 
       const w = (node.bounds.max.x - node.bounds.min.x)
@@ -269,7 +233,7 @@ export class QuadTree {
         h
       )
     })
-    this._root.traverseAll(node => {
+    this.traverseAll(node => {
       node.objects.forEach(client => {
         ctx.strokeStyle = "white"
         const w = (client.bounds.max.x - client.bounds.min.x)
@@ -288,25 +252,26 @@ export class QuadTree {
    * Resizes a quadtree to a new bound size.
    * This method should not be used without care.
    * 
-   * @param {Bounds} bounds
+   * @param {BoundingBox} bounds
+   * @param {number} depth
    * 
    */
-  recalculateBounds(bounds) {
+  recalculateBounds(bounds, depth) {
     if (!bounds) return
-    let ob = this._root.traverseAll((e, arr) => {
+    let ob = this.traverseAll((e, arr) => {
       let length = e.objects.length
       for (var i = 0; i < length; i++) {
         arr.push(e.objects[i])
       }
     }, [])
     this._root = new Node(bounds)
-    this.split()
+    this.split(depth)
     ob.forEach(e => {
       this.insert(ob)
     })
   }
   /**
-   * @param {CollisionPair[]} target Empty array to store results.
+   * @param {number} depth Empty array to store results.
    * @@param {Node} node 
    * */
   split(depth, node = this._root) {

@@ -1,4 +1,6 @@
-import { Utils, Vector2, Overlaps, BoundingBox, clamp } from "../chaos.module.js"
+import { Overlaps, Vector2, BoundingBox } from "../chaos.module.js"
+import { Err } from "../chaos.module.js"
+import { Utils } from "../chaos.module.js"
 import { Client } from "./client.js"
 import { renderObj } from "./utils.js"
 import { Pool } from "./objectPool.js"

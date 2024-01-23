@@ -1,8 +1,10 @@
-import { Utils, Vector2, BoundingBox, clamp } from "../chaos.module.js"
+import { Overlaps, Vector2, BoundingBox,clamp } from "../chaos.module.js"
+import { Utils } from "../chaos.module.js"
 import { Client } from "./client.js"
 import { renderObj } from "./utils.js"
 
 export class HashGrid {
+  queryid = 0
   constructor(binWidth, binHeight, numberX, numberY, offset = new Vector2()) {
     this.bins = []
     this.binWidth = binWidth
@@ -83,7 +85,20 @@ export class HashGrid {
       this._insert(obj.client)
     }
   }
-  query(bounds) {}
+  query(bounds,out = []) {
+    this.queryid++
+    const list = this._getbinIndices(bounds)
+    for (var i = 0; i < list.length; i++) {
+      const bin = this.bins[list[i]]
+      
+      for (let j = 0; j < bin.length; j++) {
+        const client = bin[j]
+        if(client.queryid === this.queryid)continue
+        client.queryid = this.queryid
+        out.push(client.value)
+      }
+    }
+  }
   traverseAll(func, out) {
     for (let i = 0; i < this.bins.length; i++) {
       func(this.bins[i], out)

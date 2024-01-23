@@ -6,7 +6,7 @@ import { Vector2, BoundingBox } from "../chaos.module.js"
  */
 export class Client {
   bounds = new BoundingBox()
-  position = new Vector2()
+  queryid = 0
   /**
    * @type {U}
    */

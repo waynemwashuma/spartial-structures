@@ -2975,6 +2975,21 @@ const Overlaps = {
       (y - b.pos.y) * (y - b.pos.y);
 
     return distance < b.r * b.r;
+  },
+    /**
+   * Checks if any AABB or/and a BoundingCircle overlap
+   * 
+   * @param {BoundingBox | BoundingCircle} a
+   * @param {BoundingCircle | BoundingBox} b
+   */
+  colliding(bound1, bound2) {
+    if (bound1.max && bound2.max)
+      return Overlaps.AABBColliding(bound1, bound2)
+    if (bound1.r && bound2.r)
+      return Overlaps.boundSpheresColliding(bound1, bound2)
+    if (bound1.r)
+      return Overlaps.AABBvsSphere(bound2, bound1)
+    return Overlaps.AABBvsSphere(bound1, bound2)
   }
 };
 
