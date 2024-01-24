@@ -1,7 +1,6 @@
 import { Renderer2D, Vector2, BoundingBox, rand } from "./chaos.module.js"
 import { QuadTree, HashGrid, AabbTree } from "./src/index.js"
 
-
 const renderer = new Renderer2D()
 renderer.setViewport(innerWidth, innerHeight)
 setTimeout(_ => renderer.play())
