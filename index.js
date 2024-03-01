@@ -21,7 +21,7 @@ const grid = new HashGrid(
   new Vector2(0,0)
 )
 
-demoGrid(quadtree,renderer,2)
+demoGrid(grid,renderer,1000)
 
 function demoGrid(grid,renderer,number = 10) {
   renderer.clear()
@@ -42,19 +42,14 @@ function createObjs(x,y,w,h,no) {
   const map = [[],[],[]]
 
   for (let i = 0; i < no; i++) {
-    x = rand(100,x)
-    y = rand(100,y)
+    const nx = rand(100,x)
+    const ny = rand(100,y)
 
     map[0].push(new Vector2(rand(-5,5),rand(-5,5)))
-    map[1].push(new BoundingBox(x - w / 2,y - h / 2,x + w / 2,y + h / 2))
+    map[1].push(new BoundingBox(nx - w / 2,ny - h / 2,nx + w / 2,ny + h / 2))
     map[2].push(new Client(map[0].length-1,null))
   }
   return map
-}
-function grid_insert(grid,objs,bounds) {
-  for (let i = 0; i < objs.length; i++) {
-    grid.insert(objs[i],bounds[i])
-  }
 }
 function translate_bound(bounds,func) {
   for (let i = 0; i < bounds.length; i++) {
@@ -67,13 +62,6 @@ function translate_bound(bounds,func) {
     )
   }
 }
-function createRandom(bounds,width,height) {
-  const minX = rand(bounds.min.x,bounds.max.x)
-  const minY = rand(bounds.min.y,bounds.max.y)
-
-  return createObj(minX,minY,minX + rand() * width,minY + rand() * height)
-}
-
 function bounceoff(velocity,bounds) {
   for (let i = 0; i < bounds.length; i++) {
     if (bounds[i].min.x < canvasBound.min.x || bounds[i].min.x > canvasBound.max.x)

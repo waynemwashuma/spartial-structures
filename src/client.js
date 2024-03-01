@@ -10,13 +10,13 @@ export class Client {
    */
   queryid = 0
   /**
-   * @type {U}
+   * @type {U | null}
    */
   node = null
   /**
    * @type {T}
    */
-  value = null
+  value
   /**
    * @param {T} value
   */
