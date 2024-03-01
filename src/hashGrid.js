@@ -1,12 +1,27 @@
-import { Vector2,clamp } from "../chaos.module.js"
+import { BoundingBox,Vector2,clamp } from "../chaos.module.js"
 import { Utils } from "../chaos.module.js"
 import { Client } from "./client.js"
-import { renderObj } from "./utils.js"
-
+/**
+ * @template T
+ */
 export class HashGrid {
+  /**
+   * @type {number}
+   */
   queryid = 0
-  constructor(binWidth,binHeight,numberX,numberY,offset = new Vector2()) {
-    this.bins = []
+  /**
+   * @type {Client<T,number[]>[][]}
+   */
+  bins = []
+  /**
+   * 
+   * @param {number} binWidth 
+   * @param {number} binHeight 
+   * @param {number} numberX 
+   * @param {number} numberY 
+   * @param {Vector2} offset 
+   */
+  constructor(binWidth,binHeight,numberX,numberY,offset = new Vector2(0,0)) {
     this.binWidth = binWidth
     this.binHeight = binHeight
     this.binsX = numberX
@@ -19,12 +34,30 @@ export class HashGrid {
       }
     }
   }
+  /**
+   * 
+   * @private
+   * @param {number} xoffset 
+   * @param {number} yoffset 
+   * @returns {number}
+   */
   _getBinIndex(xoffset,yoffset) {
     return this.binsX * yoffset + xoffset
   }
+  /**
+   * @private
+   * @param {number} value 
+   * @param {number} offset 
+   * @param {number} width 
+   * @param {number} number 
+   */
   _getkey(value,offset,width,number) {
     return clamp(Math.floor((value - offset) / width),0,number - 1)
   }
+  /**
+   * 
+   * @param {BoundingBox} bounds 
+   */
   _getbinIndices(bounds) {
     const minX = bounds.min.x
     const minY = bounds.min.y
@@ -46,21 +79,23 @@ export class HashGrid {
     return indices
   }
   /**
-   * @private
-   * @param {Client} client
+   * @param {Client<T,number[]>} client 
+   * @param {BoundingBox} bounds 
    */
-  _insert(client,bounds) {
+  insert(client,bounds) {
     const indices = this._getbinIndices(bounds)
     for (let i = 0; i < indices.length; i++) {
       this.bins[indices[i]].push(client)
     }
     client.node = indices
   }
-  insert(client,bounds) {
-    this._insert(client,bounds)
-  }
-  _remove(client) {
-    if(!client.node)return
+  /**
+   * 
+   * @param {Client<T,number[]>} client 
+   * @returns 
+   */
+  remove(client) {
+    if (!client.node) return
     const indices = client.node
     for (let i = 0; i < indices.length; i++) {
       const bin = this.bins[indices[i]]
@@ -70,18 +105,25 @@ export class HashGrid {
     }
     client.node.length = 0
   }
-  remove(client) {
-    this._remove(client)
-  }
+  /**
+   * 
+   * @param {Client<T,number[]>[]} clients 
+   * @param {BoundingBox[]} bounds 
+   */
   update(clients,bounds) {
     for (let i = 0; i < clients.length; i++) {
-      this._remove(clients[i])
-      this._insert(clients[i],bounds[i])
+      this.remove(clients[i])
+      this.insert(clients[i],bounds[i])
     }
   }
-  query(bounds,out = []) {
+  /**
+   * @param {BoundingBox} bound
+   * @param {T[]} out
+   * @param {QueryFunc<number[],T>} func
+   */
+  query(bound,out = [],func = () => true) {
     this.queryid++
-    const list = this._getbinIndices(bounds)
+    const list = this._getbinIndices(bound)
     for (var i = 0; i < list.length; i++) {
       const bin = this.bins[list[i]]
 
@@ -89,15 +131,25 @@ export class HashGrid {
         const client = bin[j]
         if (client.queryid === this.queryid) continue
         client.queryid = this.queryid
-        out.push(client.value)
+        if (func(client,bound))
+          out.push(client.value)
       }
     }
   }
+  /**
+   * @template U
+   * @param {TraverserFunc<Client<T,number[]>[],U[]>} func
+   * @param {U[]} out
+   */
   traverseAll(func,out) {
     for (let i = 0; i < this.bins.length; i++) {
       func(this.bins[i],out)
     }
+    return out
   }
+  /**
+   * @param {CanvasRenderingContext2D} ctx
+   */
   draw(ctx) {
     ctx.lineWidth = 5
     ctx.beginPath()
@@ -134,3 +186,14 @@ export class HashGrid {
     ctx.strokeStyle = "white"
   }
 }
+
+/**
+ * @template T
+ * @template U
+ * @typedef {import("./types.js").QueryFunc<T,U>} QueryFunc
+ */
+/**
+ * @template T
+ * @template U
+ * @typedef {import("./types.js").TraverserFunc<T,U>} TraverserFunc
+ */
