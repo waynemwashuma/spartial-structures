@@ -1,5 +1,5 @@
-import { BoundingBox } from "../chaos.module";
-import { Client } from "./client";
+import { BoundingBox } from "../chaos.module.js";
+import { Client } from "./client.js";
 
 /**
  * @template T
