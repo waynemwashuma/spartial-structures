@@ -1,0 +1,11 @@
+{
+    "compilerOptions": {
+        "strict":true,
+        "allowJs": true,
+        "checkJs": true,
+        "target": "ES2015"
+    },
+    "include": [
+        "src/**/*"
+    ],
+}
