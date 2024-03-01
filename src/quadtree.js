@@ -1,19 +1,22 @@
-import { Overlaps,Vector2,BoundingBox } from "../chaos.module.js"
+import { Overlaps,BoundingBox, Vector2 } from "../chaos.module.js"
 import { Err } from "../chaos.module.js"
 import { Utils } from "../chaos.module.js"
 import { Client } from "./client.js"
 
-export class Node {
-  /**@type {Node[]}*/
+/**
+ * @template T
+ */
+export class QuadTreeNode {
+  /**@type {QuadTreeNode<T>[]}*/
   children = []
-  /**@type {Body[]}*/
+  /**@type {Client<T,QuadTreeNode<T>>[]}*/
   objects = []
-  /**@type {Node}*/
+  /**@type {QuadTreeNode<T> | null}*/
   parent = null
   /**@type {boolean}*/
   hasObjects = false
   /**@type {BoundingBox}*/
-  bounds = null
+  bounds
   /**
    * @param {BoundingBox} bounds
    */
@@ -21,19 +24,11 @@ export class Node {
     this.bounds = bounds
   }
   /**
-   * @param {Node} node
+   * @param {QuadTreeNode<T>} node
    */
   add(node) {
     this.children.push(node)
     node.parent = this
-  }
-  clear() {
-    for (var i = 0; i < this.children.length; i++) {
-      const node = nodes[i]
-
-      this.children.remove(node)
-      node.parent = null
-    }
   }
 
   /**
@@ -54,8 +49,8 @@ export class Node {
     )
   }
   /**
-   * @param {Bounds} bounds
-   * @return {boolean}
+   * @param {BoundingBox} bounds
+   * @returns {boolean}
    */
   contains(bounds) {
     return (
@@ -66,8 +61,8 @@ export class Node {
     )
   }
   /**
-   * @param {Vector_like} position
-   * @returns boolean
+   * @param {Vector2} position
+   * @returns {boolean}
    */
   isInNode(position) {
     if (
@@ -79,35 +74,53 @@ export class Node {
       return true
     return false
   }
+  /**
+   * 
+   * @returns {boolean}
+   */
   isRootNode() {
     return !this.parent
   }
 }
 
 /**
+ * @template T
+ * 
  * This is a bounded broadphase that is used to speed up collision testing on sparse number of objects over a large area.
- *
+ * 
  */
 export class QuadTree {
+  /**
+   * @type {BoundingBox}
+   */
+  bounds
+  /**
+   * @private
+   * @type {QuadTreeNode<T>}
+   */
+  _root
   /**
    * @param {BoundingBox} bounds The region it operates on.
    * @param {number} [maxdepth=3] Maximum number of branches.
    * 
    */
   constructor(bounds,maxdepth = 3) {
-    this._root = new Node(bounds)
+    this._root = new QuadTreeNode(bounds)
     this.bounds = bounds
 
     this.split(maxdepth)
   }
   /**
-   * @private
+   * 
+   * @param {Client<T,QuadTreeNode<T>>} client 
+   * @param {BoundingBox} bound 
+   * @param {QuadTreeNode<T>} [node] 
    */
-  _insert(client,bound,node) {
+  insert(client,bound,node = this._root) {
     if (!node.contains(bound))
       return false
     for (let i = 0; i < node.children.length; i++) {
-      const r = this._insert(client,bound,node.children[i])
+      const r = this.insert(client,bound,node.children[i])
       if (r) {
         node.hasObjects = true
         return true
@@ -122,35 +135,23 @@ export class QuadTree {
     return false
   }
   /**
-   * @inheritdoc
-   * @param {Body} obj
+   * 
+   * @param {Client<T,QuadTreeNode<T>>} client 
+   * @returns 
    */
-  insert(client,bound) {
-    if (!this._root.contains(bound))
-      return Err.warnOnce("A client is has left the quadtree out of bounds")
-    this._insert(client,bound,this._root)
-  }
-  /**
-   * @private
-   */
-  _remove(client) {
-    if(!client.node)return
+  remove(client) {
+    if (!client.node) return
     let objects = client.node.objects
     const index = objects.indexOf(client)
     const removed = Utils.removeElement(objects,index)
     if (removed === null) return false
     return true
   }
+
   /**
-   * @inheritdoc
-   * @param {Body} obj
-   */
-  remove(client) {
-    return this._remove(client,this._root)
-  }
-  /**
-   * @inheritdoc
-   * @param {Body[]} bodies
+   * 
+   * @param {Client<T,QuadTreeNode<T>>[]} clients 
+   * @param {BoundingBox[]} bounds 
    */
   update(clients,bounds) {
     for (var i = 0; i < clients.length; i++) {
@@ -161,31 +162,31 @@ export class QuadTree {
   /**
    * @inheritdoc
    * @param {BoundingBox} bounds Region to check in.
-   * @param {Body[]} [target] Empty array to store results.
-   * @param {Node} [node]
-   * @returns {Body[]}
+   * @param {T[]} [target] Empty array to store results.
+   * @param {QuadTreeNode<T>} [node]
+   * @param {QueryFunc<T>} [func=approxQuery] 
+   * @returns {T[]}
    */
-  query(bounds,target = [],node = this._root) {
+  query(bounds,target = [],func = approxQuery,node = this._root) {
     if (!Overlaps.AABBColliding(node.bounds,bounds))
       return target
     if (node.children.length) {
-      this.query(bounds,target,node.children[0])
-      this.query(bounds,target,node.children[1])
-      this.query(bounds,target,node.children[2])
-      this.query(bounds,target,node.children[3])
+      this.query(bounds,target,func,node.children[0])
+      this.query(bounds,target,func,node.children[1])
+      this.query(bounds,target,func,node.children[2])
+      this.query(bounds,target,func,node.children[3])
     }
     for (let i = 0; i < node.objects.length; i++) {
-      const objects = node.objects[i]
-      if (Overlaps.colliding(objects.bounds,bounds))
-        target.push(a)
+      if (func(node.objects[i],bounds))
+        target.push(node.objects[i].value)
     }
     return target
   }
   /**
-   * @template T
-   * @param {traverser<T>} func
-   * @param {T} [out]
-   *  @returns {T}
+   * @template U
+   * @param {TraverserFunc<QuadTreeNode<T>,U[]>} func
+   * @param {U[]} [out]
+   *  @returns {U[]}
    */
   traverseAll(func,out = [],node = this._root) {
     if (node.children.length) {
@@ -231,30 +232,8 @@ export class QuadTree {
     ctx.closePath()
   }
   /**
-   * Resizes a quadtree to a new bound size.
-   * This method should not be used without care.
-   * 
-   * @param {BoundingBox} bounds
-   * @param {number} depth
-   * 
-   */
-  recalculateBounds(bounds,depth) {
-    if (!bounds) return
-    let ob = this.traverseAll((e,arr) => {
-      let length = e.objects.length
-      for (var i = 0; i < length; i++) {
-        arr.push(e.objects[i])
-      }
-    },[])
-    this._root = new Node(bounds)
-    this.split(depth)
-    ob.forEach(e => {
-      this.insert(ob)
-    })
-  }
-  /**
    * @param {number} depth Empty array to store results.
-   * @@param {Node} node 
+   * @param {QuadTreeNode<T>} node 
    * */
   split(depth,node = this._root) {
     if (depth <= 0) return
@@ -263,7 +242,7 @@ export class QuadTree {
     const originX = node.bounds.min.x + w
     const originY = node.bounds.min.y + h
 
-    const topLeft = new Node(
+    const topLeft = new QuadTreeNode(
       new BoundingBox(
         node.bounds.min.x,
         node.bounds.min.y,
@@ -271,7 +250,7 @@ export class QuadTree {
         node.bounds.min.y + h
       )
     )
-    const topRight = new Node(
+    const topRight = new QuadTreeNode(
       new BoundingBox(
         node.bounds.min.x + w,
         node.bounds.min.y,
@@ -279,7 +258,7 @@ export class QuadTree {
         node.bounds.max.y - h
       )
     )
-    const bottomLeft = new Node(
+    const bottomLeft = new QuadTreeNode(
       new BoundingBox(
         node.bounds.min.x,
         node.bounds.min.y + h,
@@ -287,7 +266,7 @@ export class QuadTree {
         node.bounds.max.y
       )
     )
-    const bottomRight = new Node(
+    const bottomRight = new QuadTreeNode(
       new BoundingBox(
         node.bounds.min.x + w,
         node.bounds.min.y + h,
@@ -304,3 +283,28 @@ export class QuadTree {
     )
   }
 }
+/**
+ * @template T
+ * @param {Client<T,QuadTreeNode<T>>} _client 
+ * @param {BoundingBox} _bound 
+ * @returns 
+ */
+function approxQuery(_client,_bound) {
+  return true
+}
+/**
+ * @template T
+ * @callback QueryFunc
+ * @param {Client<T,QuadTreeNode<T>>} client
+ * @param {BoundingBox} bound
+ * @returns {boolean}
+ */
+
+/**
+ * @template T
+ * @template U
+ * @callback TraverserFunc
+ * @param {T} node
+ * @param {U} out
+ * @returns {void}
+ */
