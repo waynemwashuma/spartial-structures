@@ -2,7 +2,7 @@ import { Overlaps,BoundingBox, Vector2 } from "../chaos.module.js"
 import { Err } from "../chaos.module.js"
 import { Utils } from "../chaos.module.js"
 import { Client } from "./client.js"
-
+import "./types.js"
 /**
  * @template T
  */
@@ -164,7 +164,7 @@ export class QuadTree {
    * @param {BoundingBox} bounds Region to check in.
    * @param {T[]} [target] Empty array to store results.
    * @param {QuadTreeNode<T>} [node]
-   * @param {QueryFunc<T>} [func=approxQuery] 
+   * @param {QueryFunc<QuadTreeNode<T>,T>} [func=approxQuery] 
    * @returns {T[]}
    */
   query(bounds,target = [],func = approxQuery,node = this._root) {
@@ -292,19 +292,14 @@ export class QuadTree {
 function approxQuery(_client,_bound) {
   return true
 }
-/**
- * @template T
- * @callback QueryFunc
- * @param {Client<T,QuadTreeNode<T>>} client
- * @param {BoundingBox} bound
- * @returns {boolean}
- */
 
 /**
  * @template T
  * @template U
- * @callback TraverserFunc
- * @param {T} node
- * @param {U} out
- * @returns {void}
+ * @typedef {import("./types.js").QueryFunc<T,U>} QueryFunc
+ */
+/**
+ * @template T
+ * @template U
+ * @typedef {import("./types.js").TraverserFunc<T,U>} TraverserFunc
  */
