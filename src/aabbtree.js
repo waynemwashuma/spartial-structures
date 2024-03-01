@@ -5,33 +5,6 @@ import { Pool } from "./objectPool.js"
 
 /**
  * @template T
- * @extends {Pool<AabbTreeNode<T>>}
- */
-class NodePool extends Pool {
-  /**
-   * @param {number} [n]
-   */
-  constructor(n) {
-    super(n)
-  }
-  create() {
-    return new AabbTreeNode()
-  }
-  /**
-   * 
-   * @param {AabbTreeNode<T>} node 
-   * @returns 
-   */
-  destroy(node) {
-    node.parent = null
-    node.value = null
-    node.left = null
-    node.right = null
-    return node
-  }
-}
-/**
- * @template T
  */
 class AabbTreeNode {
   /**
@@ -70,9 +43,9 @@ class AabbTreeNode {
  */
 export class AabbTree {
   /**
-   * @type {NodePool<T>}
+   * @type {Pool<AabbTreeNode<T>>}
    */
-  _pool = new NodePool(1)
+  _pool = new Pool(0,() => new AabbTreeNode())
   /**
    * 
    * @param {Vector2} padding 
@@ -83,12 +56,12 @@ export class AabbTree {
   }
   /**
    * @private
-   * @param {AabbTreeNode<T>} node
+   * @param {AabbTreeNode<T> |null} node
    */
   _adjustBounds(node) {
+    if (!node) return
     //@ts-ignore
     AabbTreeNode.union(node.left,node.right,node)
-    if (!node.parent) return
     this._adjustBounds(node.parent)
   }
   /**
@@ -105,15 +78,27 @@ export class AabbTree {
   /**
    * @private
    * @param {AabbTreeNode<T>} node
+   */
+  _resetNode(node){
+    node.parent = null
+    node.left = null
+    node.right = null
+    node.value = null
+  }
+  /**
+   * @private
+   * @param {AabbTreeNode<T>} node
    * @param {AabbTreeNode<T> | null} [parent]
    */
   _resolveNode(node,parent = this.root) {
-    if(!parent){
+    if (!parent) {
       this.root = null
       return
     }
     if (!parent.left) {
       const newParent = this._pool.give()
+      this._resetNode(newParent)
+
       const oldParent = parent
 
       if (oldParent.parent === null) {
@@ -131,7 +116,6 @@ export class AabbTree {
 
       newParent.left = oldParent
       newParent.right = node
-
       this._adjustBounds(node.parent)
     }
     if (parent.left && parent.right) {
@@ -147,7 +131,8 @@ export class AabbTree {
    */
   insert(client,bound) {
     const node = this._pool.give()
-    //const node = new AabbTreeNode()
+    this._resetNode(node)
+
     node.value = client
     client.node = node
     node.bounds.copy(bound)
@@ -172,13 +157,13 @@ export class AabbTree {
       this.root = null
       return
     }
-    
+
     //I am certain that there must be a left and right node on the parent
     //Btw,im just casting (yes,in javascript)
     const sibling = /**@type {AabbTreeNode<T>} */(parent.left === node ? parent.right : parent.left)
 
     this._swapRemove(sibling,parent)
-    if(sibling.parent)this._adjustBounds(sibling.parent)
+    this._adjustBounds(sibling.parent)
 
     this._pool.take(node)
     this._pool.take(parent)

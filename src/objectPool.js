@@ -12,10 +12,12 @@ export class Pool {
   _pool = []
   /**
    * @param {number} number Number of objects to create at the initialization.
+   * @param {()=>T} create
    */
-  constructor(number = 100) {
+  constructor(number = 100,create) {
+    this._create = create
     for (var i = 0; i < number; i++) {
-      this._pool.push(this.create())
+      this._pool.push(this._create())
     }
   }
   /**
@@ -30,7 +32,7 @@ export class Pool {
     let d = this._pool.length - x
     if (d < 0) {
       for (var i = d; i < 0; i++) {
-        this._pool.push(this.create())
+        this._pool.push(this._create())
       }
       return
     }
@@ -47,10 +49,11 @@ export class Pool {
    * @returns {T}
    */
   give() {
-    if (this._pool.length) {
-      return this._pool.pop()
+    const t = this._pool.pop()
+    if (t) {
+      return t
     }
-    return this.create()
+    return this._create()
   }
   /**
    * Takes an object's ownership.
@@ -59,27 +62,6 @@ export class Pool {
    * @param {T} obj
    */
   take(obj) {
-    this._pool.push(this.destroy(obj))
-  }
-  /**
-   * Does some cleanup on a taken object.
-   * 
-   * @protected
-   * @param {T} obj
-   */
-  destroy(obj) {
-    for (var prop in obj) {
-      delete obj[prop]
-    }
-    return obj
-  }
-  /**
-   * Creates a new object.
-   * 
-   * @protected
-   * @returns T
-  */
-  create() {
-    return {}
+    this._pool.push(obj)
   }
 }

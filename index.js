@@ -21,7 +21,7 @@ const grid = new HashGrid(
   new Vector2(0,0)
 )
 
-demoGrid(grid,renderer,1000)
+demoGrid(aabbtree,renderer,10)
 
 function demoGrid(grid,renderer,number = 10) {
   renderer.clear()
