@@ -1,11 +1,13 @@
-import { Vector2, BoundingBox } from "../chaos.module.js"
+import { BoundingBox } from "../chaos.module.js"
 
 /**
  * @template T
  * @template U
  */
 export class Client {
-  bounds = new BoundingBox()
+  /**
+   * @type {number}
+   */
   queryid = 0
   /**
    * @type {U}
@@ -14,12 +16,11 @@ export class Client {
   /**
    * @type {T}
    */
-  body = null
+  value = null
   /**
-   * @param {T} body
-   * @param {U} node
+   * @param {T} value
   */
-  constructor(body,node) {
-    this.body = body
+  constructor(value) {
+    this.value = value
   }
 }

@@ -1,228 +1,86 @@
-import { Renderer2D, Vector2, BoundingBox, rand } from "./chaos.module.js"
-import { QuadTree, HashGrid, AabbTree } from "./src/index.js"
+import { Renderer2D,Vector2,BoundingBox,rand } from "./chaos.module.js"
+import { Client } from "./src/client.js"
+import { QuadTree,HashGrid,AabbTree,renderObj } from "./src/index.js"
 
 const renderer = new Renderer2D()
-renderer.setViewport(innerWidth, innerHeight)
+renderer.setViewport(innerWidth,innerHeight)
 setTimeout(_ => renderer.play())
 document.body.append(renderer.domElement)
-const bounds = new BoundingBox(
-  100, 100,
-  renderer.width - 100, renderer.height - 100
-)
-const quadtree = new QuadTree(bounds, 3);
-const aabbtree = new AabbTree(new Vector2(15, 15))
-const grid = new HashGrid(100, 100, 20, 20, new Vector2(100, 100))
 const canvasBound = new BoundingBox(
-  20, 20,
-  renderer.width - 50,
-  renderer.height - 50
+  0,0,
+  renderer.width,renderer.height
+)
+const bound = new BoundingBox(-20,-20,renderer.width + 20,renderer.height + 20)
+const quadtree = new QuadTree(bound,3);
+const aabbtree = new AabbTree(new Vector2(15,15))
+const GRID_NUMBER = 20
+const grid = new HashGrid(
+  renderer.width / GRID_NUMBER,renderer.height / GRID_NUMBER,
+  GRID_NUMBER,
+  GRID_NUMBER,
+  new Vector2(0,0)
 )
 
-renderDemo4()
+demoGrid(quadtree,renderer,2)
 
-//spatialHashgrid
-function renderDemo1() {
-  const obj = createObj(250, 550, 300, 600)
-  grid.insert(obj)
-  let r = 0
-  let length = 3
-  const speed = 0.01
+function demoGrid(grid,renderer,number = 10) {
+  renderer.clear()
+  const [velocity,bounds,clients] = createObjs(renderer.width,renderer.height,50,50,number)
   renderer.add({
     render(ctx) {
-      obj.bounds.translate(
-        new Vector2(
-          length * Math.sin(r),
-          length * Math.cos(r)
-        )
-      )
-      grid.update([obj])
-      r += speed
+      translate_bound(bounds,i => [velocity[i].x,velocity[i].y])
+      bounceoff(velocity,bounds)
+      grid.update(clients,bounds)
       grid.draw(ctx)
+      ctx.strokeStyle = "white"
+      bounds.forEach(b=>renderObj(ctx,b))
     }
   })
 }
 
-function renderDemo2() {
-  const obj = createObj(250, 550, 300, 600)
-  const obj2 = createObj(750, 480, 800, 580)
-  grid.insert(obj)
-  grid.insert(obj2)
-  let r = 0
-  let length = 3
-  const speed = 0.01
-  renderer.add({
-    render(ctx) {
-      obj.bounds.translate(
-        new Vector2(
-          length * Math.sin(r),
-          length * Math.cos(r)
-        )
-      )
-      obj2.bounds.translate(
-        new Vector2(
-          length * Math.sin(-r),
-          length * Math.cos(-r)
-        )
-      )
-      grid.update([obj, obj2])
-      r += speed
+function createObjs(x,y,w,h,no) {
+  const map = [[],[],[]]
 
+  for (let i = 0; i < no; i++) {
+    x = rand(100,x)
+    y = rand(100,y)
 
-      grid.draw(ctx)
-    }
-  })
-}
-
-//quadtree 
-function renderDemo3() {
-  const obj = createObj(250, 550, 300, 600)
-  quadtree.insert(obj)
-  let r = 0
-  let length = 3
-  const speed = 0.01
-  renderer.add({
-    render(ctx) {
-      obj.bounds.translate(
-        new Vector2(
-          length * Math.sin(r),
-          length * Math.cos(r)
-        )
-      )
-
-      quadtree.update([obj])
-      r += speed
-      quadtree.draw(ctx)
-    }
-  })
-}
-
-function renderDemo4() {
-  const obj = createObj(250, 550, 300, 600)
-  const obj2 = createObj(750, 480, 800, 580)
-  quadtree.insert(obj)
-  quadtree.insert(obj2)
-  let r = 0
-  let length = 3
-  const speed = 0.01
-  renderer.add({
-    render(ctx) {
-      obj.bounds.translate(
-        new Vector2(
-          length * Math.sin(r),
-          length * Math.cos(r)
-        )
-      )
-      obj2.bounds.translate(
-        new Vector2(
-          length * Math.sin(-r),
-          length * Math.cos(-r)
-        )
-      )
-      quadtree.update([obj, obj2])
-      r += speed
-
-
-      quadtree.draw(ctx)
-    }
-  })
-}
-
-//aabbtree
-function renderDemo5() {
-  const obj = createObj(250, 550, 300, 600)
-  aabbtree.insert(obj)
-  let r = 0
-  let length = 3
-  const speed = 0.01
-  renderer.add({
-    render(ctx) {
-      obj.bounds.translate(
-        new Vector2(
-          length * Math.sin(r),
-          length * Math.cos(r)
-        )
-      )
-
-      aabbtree.update([obj])
-      r += speed
-      aabbtree.draw(ctx)
-    }
-  })
-}
-
-function renderDemo6() {
-  const obj = createObj(250, 550, 300, 600)
-  const obj2 = createObj(750, 480, 800, 580)
-  aabbtree.insert(obj)
-  aabbtree.insert(obj2)
-  let r = 0
-  let length = 3
-  const speed = 0.01
-  renderer.add({
-    render(ctx) {
-      obj.bounds.translate(
-        new Vector2(
-          length * Math.sin(r),
-          -length * Math.cos(r)
-        )
-      )
-      obj2.bounds.translate(
-        new Vector2(
-          length * Math.sin(-r),
-          length * Math.cos(-r)
-        )
-      )
-      aabbtree.update([obj, obj2])
-      r += speed
-
-
-      aabbtree.draw(ctx)
-    }
-  })
-}
-
-function renderDemo7() {
-  const obj = []
-  for (var i = 0; i < 20; i++) {
-    let r = createRandom(canvasBound, 100, 200)
-    obj.push(r)
-    r.velocity.set(rand() * 10, rand() * 10)
+    map[0].push(new Vector2(rand(-5,5),rand(-5,5)))
+    map[1].push(new BoundingBox(x - w / 2,y - h / 2,x + w / 2,y + h / 2))
+    map[2].push(new Client(map[0].length-1,null))
   }
-  obj.forEach(o => aabbtree.insert(o))
-  renderer.add({
-    render(ctx) {
-      obj.forEach(o => {
-        o.bounds.translate(o.velocity)
-        bounceoff(o)
-      })
-      aabbtree.update(obj)
-      aabbtree.draw(ctx)
-    }
-  })
+  return map
 }
-
-function createObj(minX, minY, maxX, maxY) {
-  return {
-    bounds: new BoundingBox(minX, minY, maxX, maxY),
-    client: null,
-    velocity: new Vector2(),
-    getBounds() {
-      return this.bounds
-    }
+function grid_insert(grid,objs,bounds) {
+  for (let i = 0; i < objs.length; i++) {
+    grid.insert(objs[i],bounds[i])
   }
 }
+function translate_bound(bounds,func) {
+  for (let i = 0; i < bounds.length; i++) {
+    const [x,y] = func(i)
+    bounds[i].translate(
+      new Vector2(
+        x,
+        y
+      )
+    )
+  }
+}
+function createRandom(bounds,width,height) {
+  const minX = rand(bounds.min.x,bounds.max.x)
+  const minY = rand(bounds.min.y,bounds.max.y)
 
-function createRandom(bounds, width, height) {
-  const minX = rand(bounds.min.x, bounds.max.x)
-  const minY = rand(bounds.min.y, bounds.max.y)
-
-  return createObj(minX, minY, minX + rand() * width, minY + rand() * height)
+  return createObj(minX,minY,minX + rand() * width,minY + rand() * height)
 }
 
-function bounceoff(obj) {
-  if (obj.bounds.min.x < canvasBound.min.x || obj.bounds.min.x > canvasBound.max.x)
-    obj.velocity.x = -obj.velocity.x
-  if (obj.bounds.min.y < canvasBound.min.y || obj.bounds.min.y > canvasBound.max.y)
-    obj.velocity.y = -obj.velocity.y
+function bounceoff(velocity,bounds) {
+  for (let i = 0; i < bounds.length; i++) {
+    if (bounds[i].min.x < canvasBound.min.x || bounds[i].min.x > canvasBound.max.x)
+      velocity[i].x = -velocity[i].x
+    if (bounds[i].min.y < canvasBound.min.y || bounds[i].min.y > canvasBound.max.y)
+      velocity[i].y = -velocity[i].y
+  }
+
 }
 console.log(aabbtree)

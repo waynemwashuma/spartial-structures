@@ -1,4 +1,4 @@
-import { Overlaps, Vector2, BoundingBox } from "../chaos.module.js"
+import { Overlaps,Vector2,BoundingBox } from "../chaos.module.js"
 import { Err } from "../chaos.module.js"
 import { Utils } from "../chaos.module.js"
 import { Client } from "./client.js"
@@ -94,7 +94,7 @@ export class QuadTree {
    * @param {number} [maxdepth=3] Maximum number of branches.
    * 
    */
-  constructor(bounds, maxdepth = 3) {
+  constructor(bounds,maxdepth = 3) {
     this._root = new Node(bounds)
     this.bounds = bounds
 
@@ -103,17 +103,17 @@ export class QuadTree {
   /**
    * @private
    */
-  _insert(client, node) {
-    if (!node.contains(client.bounds))
+  _insert(client,bound,node) {
+    if (!node.contains(bound))
       return false
     for (let i = 0; i < node.children.length; i++) {
-      const r = this._insert(client, node.children[i])
+      const r = this._insert(client,bound,node.children[i])
       if (r) {
         node.hasObjects = true
         return true
       }
     }
-    if (node.contains(client.bounds)) {
+    if (node.contains(bound)) {
       node.objects.push(client)
       client.node = node
       node.hasObjects = true
@@ -125,22 +125,19 @@ export class QuadTree {
    * @inheritdoc
    * @param {Body} obj
    */
-  insert(obj) {
-    if (obj.client === null)
-      obj.client = new Client(obj)
-    const client = obj.client
-    client.bounds.copy(client.body.bounds)
-    if (!this._root.contains(obj.bounds))
-      return Err.warnOnce("The body with id" + body.id + "is out of bounds")
-    this._insert(client, this._root)
+  insert(client,bound) {
+    if (!this._root.contains(bound))
+      return Err.warnOnce("A client is has left the quadtree out of bounds")
+    this._insert(client,bound,this._root)
   }
   /**
    * @private
    */
-  _remove(client, node) {
+  _remove(client) {
+    if(!client.node)return
     let objects = client.node.objects
     const index = objects.indexOf(client)
-    const removed = Utils.removeElement(objects, index)
+    const removed = Utils.removeElement(objects,index)
     if (removed === null) return false
     return true
   }
@@ -148,19 +145,17 @@ export class QuadTree {
    * @inheritdoc
    * @param {Body} obj
    */
-  remove(obj) {
-    if (obj.client === null) return false
-    return this._remove(obj.client, this._root)
+  remove(client) {
+    return this._remove(client,this._root)
   }
   /**
    * @inheritdoc
    * @param {Body[]} bodies
    */
-  update(bodies) {
-    for (var i = 0; i < bodies.length; i++) {
-      this._remove(bodies[i].client, this._root)
-      bodies[i].client.bounds.copy(bodies[i].bounds)
-      this._insert(bodies[i].client, this._root)
+  update(clients,bounds) {
+    for (var i = 0; i < clients.length; i++) {
+      this.remove(clients[i])
+      this.insert(clients[i],bounds[i],this._root)
     }
   }
   /**
@@ -170,18 +165,18 @@ export class QuadTree {
    * @param {Node} [node]
    * @returns {Body[]}
    */
-  query(bounds, target = [], node = this._root) {
-    if (!Overlaps.AABBColliding(node.bounds, bounds))
+  query(bounds,target = [],node = this._root) {
+    if (!Overlaps.AABBColliding(node.bounds,bounds))
       return target
     if (node.children.length) {
-      this.query(bounds, target, node.children[0])
-      this.query(bounds, target, node.children[1])
-      this.query(bounds, target, node.children[2])
-      this.query(bounds, target, node.children[3])
+      this.query(bounds,target,node.children[0])
+      this.query(bounds,target,node.children[1])
+      this.query(bounds,target,node.children[2])
+      this.query(bounds,target,node.children[3])
     }
     for (let i = 0; i < node.objects.length; i++) {
       const objects = node.objects[i]
-      if (Overlaps.colliding(objects.bounds, bounds))
+      if (Overlaps.colliding(objects.bounds,bounds))
         target.push(a)
     }
     return target
@@ -192,14 +187,14 @@ export class QuadTree {
    * @param {T} [out]
    *  @returns {T}
    */
-  traverseAll(func, out = [], node = this._root) {
+  traverseAll(func,out = [],node = this._root) {
     if (node.children.length) {
-      this.traverseAll(func, out, node.children[0])
-      this.traverseAll(func, out, node.children[1])
-      this.traverseAll(func, out, node.children[2])
-      this.traverseAll(func, out, node.children[3])
+      this.traverseAll(func,out,node.children[0])
+      this.traverseAll(func,out,node.children[1])
+      this.traverseAll(func,out,node.children[2])
+      this.traverseAll(func,out,node.children[3])
     }
-    func(node, out)
+    func(node,out)
     return out
   }
   /**
@@ -233,19 +228,6 @@ export class QuadTree {
         h
       )
     })
-    this.traverseAll(node => {
-      node.objects.forEach(client => {
-        ctx.strokeStyle = "white"
-        const w = (client.bounds.max.x - client.bounds.min.x)
-        const h = (client.bounds.max.y - client.bounds.min.y)
-        ctx.strokeRect(
-          client.bounds.min.x,
-          client.bounds.min.y,
-          w,
-          h
-        )
-      })
-    })
     ctx.closePath()
   }
   /**
@@ -256,14 +238,14 @@ export class QuadTree {
    * @param {number} depth
    * 
    */
-  recalculateBounds(bounds, depth) {
+  recalculateBounds(bounds,depth) {
     if (!bounds) return
-    let ob = this.traverseAll((e, arr) => {
+    let ob = this.traverseAll((e,arr) => {
       let length = e.objects.length
       for (var i = 0; i < length; i++) {
         arr.push(e.objects[i])
       }
-    }, [])
+    },[])
     this._root = new Node(bounds)
     this.split(depth)
     ob.forEach(e => {
@@ -274,7 +256,7 @@ export class QuadTree {
    * @param {number} depth Empty array to store results.
    * @@param {Node} node 
    * */
-  split(depth, node = this._root) {
+  split(depth,node = this._root) {
     if (depth <= 0) return
     const w = (node.bounds.max.x - node.bounds.min.x) / 2
     const h = (node.bounds.max.y - node.bounds.min.y) / 2
@@ -318,7 +300,7 @@ export class QuadTree {
     node.add(bottomLeft)
     node.add(bottomRight)
     node.children.forEach(
-      e => this.split(depth - 1, e)
+      e => this.split(depth - 1,e)
     )
   }
 }

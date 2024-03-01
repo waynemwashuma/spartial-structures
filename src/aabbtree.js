@@ -1,10 +1,11 @@
-import { Overlaps, Vector2, BoundingBox } from "../chaos.module.js"
-import { Err } from "../chaos.module.js"
-import { Utils } from "../chaos.module.js"
+import { Overlaps,Vector2,BoundingBox } from "../chaos.module.js"
 import { Client } from "./client.js"
 import { renderObj } from "./utils.js"
 import { Pool } from "./objectPool.js"
 
+/**
+ * @extends {Pool<Node>}
+ */
 class NodePool extends Pool {
   constructor(n) {
     super(n)
@@ -26,8 +27,8 @@ class Node {
   left = null
   right = null
   bounds = new BoundingBox()
-  static union(node1, node2, out = new Node()) {
-    BoundingBox.union(node1.bounds, node2.bounds, out.bounds)
+  static union(node1,node2,out = new Node()) {
+    BoundingBox.union(node1.bounds,node2.bounds,out.bounds)
     return out
   }
 }
@@ -38,17 +39,17 @@ export class AabbTree {
     this.padding = padding
   }
   _adjustBounds(node) {
-    Node.union(node.left, node.right, node)
+    Node.union(node.left,node.right,node)
     if (!node.parent) return
     this._adjustBounds(node.parent)
   }
-  _cost(node, sibling) {
+  _cost(node,sibling) {
     const union = new Node()
-    Node.union(node, sibling, union)
+    Node.union(node,sibling,union)
 
     return calcPerimeter(union.bounds)
   }
-  _resolveNode(node, parent = this.root) {
+  _resolveNode(node,parent = this.root) {
     if (!parent.left) {
       //const newParent = new Node()
       const newParent = this._pool.give()
@@ -73,22 +74,21 @@ export class AabbTree {
       this._adjustBounds(node.parent)
     }
     if (parent.left) {
-      const leftcost = this._cost(node, parent.left)
-      const rightcost = this._cost(node, parent.right)
+      const leftcost = this._cost(node,parent.left)
+      const rightcost = this._cost(node,parent.right)
       const bestParent = leftcost > rightcost ? parent.right : parent.left
-      this._resolveNode(node, bestParent)
+      this._resolveNode(node,bestParent)
     }
   }
-  _insert(client) {
-    client.bounds.copy(client.body.bounds)
+  _insert(client,bound) {
     const node = this._pool.give()
     //const node = new Node()
     node.value = client
     client.node = node
-    node.bounds.copy(client.bounds)
+    node.bounds.copy(bound)
 
-    Vector2.prototype.sub.call(node.bounds.min, this.padding)
-    Vector2.prototype.add.call(node.bounds.max, this.padding)
+    Vector2.prototype.sub.call(node.bounds.min,this.padding)
+    Vector2.prototype.add.call(node.bounds.max,this.padding)
 
     if (!this.root) {
       this.root = node
@@ -96,25 +96,26 @@ export class AabbTree {
     }
     this._resolveNode(node)
   }
-  insert(obj) {
-    obj.client = new Client(obj)
-    this._insert(obj.client)
+  insert(client,bound) {
+    this._insert(client,bound)
   }
   _remove(client) {
+    if(!client.node)return
     const node = client.node
     const parent = node.parent
-    if (!parent) return this.root = null
-
+    if (!parent) {
+      this.root = null
+      return
+    }
     const sibling = parent.left === node ? parent.right : parent.left
 
-    this._swapRemove(sibling, parent)
-    if (node.parent === null) return
-    this._adjustBounds(node.parent)
+    this._swapRemove(sibling,parent)
+    this._adjustBounds(sibling.parent)
 
     this._pool.take(node)
     this._pool.take(parent)
   }
-  _swapRemove(node1, node2) {
+  _swapRemove(node1,node2) {
     node1.parent = node2.parent
     if (node2.parent == null)
       return this.root = node1
@@ -130,42 +131,38 @@ export class AabbTree {
 
     this._remove(client)
   }
-  update(objs) {
+  update(clients,bounds) {
     this.clear()
-    for (let i = 0; i < objs.length; i++) {
-      this._insert(objs[i].client)
+    for (let i = 0; i < clients.length; i++) {
+      this.insert(clients[i],bounds[i])
     }
   }
-  query(bounds, out = [], node = this.root) {
+  query(bounds,out = [],node = this.root) {
     if (node == void 0) return out
-    if (!Overlaps.AABBColliding(node.bounds, bounds)) return out
+    if (!Overlaps.AABBColliding(node.bounds,bounds)) return out
     if (!node.left) {
       target.push(node.value)
       return out
     }
-    this.query(bounds, out, node.left)
-    this.query(bounds, out, node.right)
+    this.query(bounds,out,node.left)
+    this.query(bounds,out,node.right)
     return out
   }
-  traverseAll(func, out, node = this.root) {
+  traverseAll(func,out,node = this.root) {
     if (node == null) return
-    this.traverseAll(func, out, node.left)
-    this.traverseAll(func, out, node.right)
-    return func(node, out)
+    this.traverseAll(func,out,node.left)
+    this.traverseAll(func,out,node.right)
+    return func(node,out)
   }
   draw(ctx) {
     this.traverseAll(node => {
       ctx.lineWidth = 5
       ctx.strokeStyle = "blue"
-      renderObj(ctx, node.bounds)
-    })
-    this.traverseAll(node => {
-      if (!node.value) return
-      ctx.strokeStyle = "white"
-      renderObj(ctx, node.value.bounds)
+      renderObj(ctx,node.bounds)
     })
   }
   clear(node = this.root) {
+    if(node === null)return
     this.root = null
     this._clear(node)
   }
