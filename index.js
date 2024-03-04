@@ -25,7 +25,7 @@ demoGrid(aabbtree,renderer,10)
 
 function demoGrid(grid,renderer,number = 10) {
   renderer.clear()
-  const [velocity,bounds,clients] = createObjs(renderer.width,renderer.height,50,50,number)
+  const [velocity,bounds,clients] = createObjs(renderer.width-100,renderer.height-100,50,50,number)
   renderer.add({
     render(ctx) {
       translate_bound(bounds,i => [velocity[i].x,velocity[i].y])

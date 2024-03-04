@@ -18,9 +18,9 @@ export class Client {
    */
   value
   /**
-   * @param {T} value
+   * @param {T} [value]
   */
-  constructor(value) {
+  constructor(value = null) {
     this.value = value
   }
 }

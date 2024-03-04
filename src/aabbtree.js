@@ -1,4 +1,4 @@
-import { Overlaps,Vector2,BoundingBox } from "../chaos.module.js"
+import { Overlaps, Vector2, BoundingBox } from "../chaos.module.js"
 import { Client } from "./client.js"
 import { renderObj } from "./utils.js"
 import { Pool } from "./objectPool.js"
@@ -33,8 +33,8 @@ class AabbTreeNode {
    * @param {AabbTreeNode<T>} node2
    * @param {AabbTreeNode<T>} out
    */
-  static union(node1,node2,out = new AabbTreeNode()) {
-    BoundingBox.union(node1.bounds,node2.bounds,out.bounds)
+  static union(node1, node2, out = new AabbTreeNode()) {
+    BoundingBox.union(node1.bounds, node2.bounds, out.bounds)
     return out
   }
 }
@@ -45,12 +45,12 @@ export class AabbTree {
   /**
    * @type {Pool<AabbTreeNode<T>>}
    */
-  _pool = new Pool(0,() => new AabbTreeNode())
+  _pool = new Pool(0, () => new AabbTreeNode())
   /**
    * 
    * @param {Vector2} padding 
    */
-  constructor(padding = new Vector2(0,0)) {
+  constructor(padding = new Vector2(0, 0)) {
     this.root = null
     this.padding = padding
   }
@@ -61,7 +61,7 @@ export class AabbTree {
   _adjustBounds(node) {
     if (!node) return
     //@ts-ignore
-    AabbTreeNode.union(node.left,node.right,node)
+    AabbTreeNode.union(node.left, node.right, node)
     this._adjustBounds(node.parent)
   }
   /**
@@ -69,9 +69,9 @@ export class AabbTree {
    * @param {AabbTreeNode<T>} node
    * @param {AabbTreeNode<T>} sibling
    */
-  _cost(node,sibling) {
+  _cost(node, sibling) {
     const union = new AabbTreeNode()
-    AabbTreeNode.union(node,sibling,union)
+    AabbTreeNode.union(node, sibling, union)
 
     return calcPerimeter(union.bounds)
   }
@@ -79,7 +79,7 @@ export class AabbTree {
    * @private
    * @param {AabbTreeNode<T>} node
    */
-  _resetNode(node){
+  _resetNode(node) {
     node.parent = null
     node.left = null
     node.right = null
@@ -90,7 +90,7 @@ export class AabbTree {
    * @param {AabbTreeNode<T>} node
    * @param {AabbTreeNode<T> | null} [parent]
    */
-  _resolveNode(node,parent = this.root) {
+  _resolveNode(node, parent = this.root) {
     if (!parent) {
       this.root = null
       return
@@ -119,17 +119,17 @@ export class AabbTree {
       this._adjustBounds(node.parent)
     }
     if (parent.left && parent.right) {
-      const leftcost = this._cost(node,parent.left)
-      const rightcost = this._cost(node,parent.right)
+      const leftcost = this._cost(node, parent.left)
+      const rightcost = this._cost(node, parent.right)
       const bestParent = leftcost > rightcost ? parent.right : parent.left
-      this._resolveNode(node,bestParent)
+      this._resolveNode(node, bestParent)
     }
   }
   /**
    * @param {Client<T, AabbTreeNode<T>>} client
    * @param {BoundingBox} bound
    */
-  insert(client,bound) {
+  insert(client, bound) {
     const node = this._pool.give()
     this._resetNode(node)
 
@@ -137,8 +137,8 @@ export class AabbTree {
     client.node = node
     node.bounds.copy(bound)
 
-    Vector2.prototype.sub.call(node.bounds.min,this.padding)
-    Vector2.prototype.add.call(node.bounds.max,this.padding)
+    Vector2.prototype.sub.call(node.bounds.min, this.padding)
+    Vector2.prototype.add.call(node.bounds.max, this.padding)
 
     if (!this.root) {
       this.root = node
@@ -160,9 +160,9 @@ export class AabbTree {
 
     //I am certain that there must be a left and right node on the parent
     //Btw,im just casting (yes,in javascript)
-    const sibling = /**@type {AabbTreeNode<T>} */(parent.left === node ? parent.right : parent.left)
+    const sibling = /**@type {AabbTreeNode<T>} */ (parent.left === node ? parent.right : parent.left)
 
-    this._swapRemove(sibling,parent)
+    this._swapRemove(sibling, parent)
     this._adjustBounds(sibling.parent)
 
     this._pool.take(node)
@@ -173,7 +173,7 @@ export class AabbTree {
    * @param {AabbTreeNode<T>} node1
    * @param {AabbTreeNode<T>} node2
    */
-  _swapRemove(node1,node2) {
+  _swapRemove(node1, node2) {
     node1.parent = node2.parent
     if (node2.parent == null)
       return this.root = node1
@@ -188,10 +188,10 @@ export class AabbTree {
    * @param {Client<T,AabbTreeNode<T>>[]} clients
    * @param {BoundingBox[]} bounds
    */
-  update(clients,bounds) {
+  update(clients, bounds) {
     this.clear()
     for (let i = 0; i < clients.length; i++) {
-      this.insert(clients[i],bounds[i])
+      this.insert(clients[i], bounds[i])
     }
   }
   /**
@@ -199,15 +199,15 @@ export class AabbTree {
    * @param {T[]} out
    * @param {AabbTreeNode<T> | null} node
    */
-  query(bounds,out = [],node = this.root) {
+  query(bounds, out = [], node = this.root) {
     if (!node) return out
-    if (!Overlaps.AABBColliding(node.bounds,bounds)) return out
+    if (!Overlaps.AABBColliding(node.bounds, bounds)) return out
     if (node.value) {
       out.push(node.value.value)
       return out
     }
-    this.query(bounds,out,node.left)
-    this.query(bounds,out,node.right)
+    this.query(bounds, out, node.left)
+    this.query(bounds, out, node.right)
     return out
   }
   /**
@@ -215,11 +215,11 @@ export class AabbTree {
    * @param {TraverserFunc<AabbTreeNode<T>,U[]>} func
    * @param {U[]} [out]
    */
-  traverseAll(func,out = [],node = this.root) {
+  traverseAll(func, out = [], node = this.root) {
     if (node == null) return
-    this.traverseAll(func,out,node.left)
-    this.traverseAll(func,out,node.right)
-    return func(node,out)
+    this.traverseAll(func, out, node.left)
+    this.traverseAll(func, out, node.right)
+    return func(node, out)
   }
   /**
    * @param {CanvasRenderingContext2D} ctx
@@ -228,7 +228,7 @@ export class AabbTree {
     this.traverseAll(node => {
       ctx.lineWidth = 5
       ctx.strokeStyle = "blue"
-      renderObj(ctx,node.bounds)
+      renderObj(ctx, node.bounds)
     })
   }
   /**
@@ -238,17 +238,15 @@ export class AabbTree {
   clear(node = this.root) {
     if (node === null) return
     this.root = null
-    this._clear(node)
-  }
-  /**
-   * @param {AabbTreeNode<T>} node
-   */
-  _clear(node) {
-    if (node.left && node.right) {
-      this._clear(node.left)
-      this._clear(node.right)
+    const nodes = [node]
+    while (nodes.length) {
+      const current = nodes.pop()
+      if (current.left && current.right) {
+        nodes.push(current.left)
+        nodes.push(current.right)
+      }
+      this._pool.take(this._resetNode(current))
     }
-    this._pool.take(node)
   }
 }
 /**
