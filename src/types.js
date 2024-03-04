@@ -18,3 +18,13 @@ import { Client } from "./client.js";
  * @param {U} out
  * @returns {void}
  */
+ 
+ /**
+  * @template T
+  * @template U
+  * @template V
+  * @callback CollisionChecker
+  * @param {Client<U,T>} client1
+  * @param {Client<U,T>} client2
+  * @return {V}
+ */

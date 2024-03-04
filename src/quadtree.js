@@ -1,4 +1,4 @@
-import { Overlaps,BoundingBox, Vector2 } from "../chaos.module.js"
+import { Overlaps, BoundingBox, Vector2 } from "../chaos.module.js"
 import { Err } from "../chaos.module.js"
 import { Utils } from "../chaos.module.js"
 import { Client } from "./client.js"
@@ -96,16 +96,16 @@ export class QuadTree {
   bounds
   /**
    * @private
-   * @type {QuadTreeNode<T>}
+   * @type {QuadTreeNode<T> | null}
    */
-  _root
+  root = null
   /**
    * @param {BoundingBox} bounds The region it operates on.
    * @param {number} [maxdepth=3] Maximum number of branches.
    * 
    */
-  constructor(bounds,maxdepth = 3) {
-    this._root = new QuadTreeNode(bounds)
+  constructor(bounds, maxdepth = 3) {
+    this.root = new QuadTreeNode(bounds)
     this.bounds = bounds
 
     this.split(maxdepth)
@@ -116,11 +116,11 @@ export class QuadTree {
    * @param {BoundingBox} bound 
    * @param {QuadTreeNode<T>} [node] 
    */
-  insert(client,bound,node = this._root) {
+  insert(client, bound, node = this.root) {
     if (!node.contains(bound))
       return false
     for (let i = 0; i < node.children.length; i++) {
-      const r = this.insert(client,bound,node.children[i])
+      const r = this.insert(client, bound, node.children[i])
       if (r) {
         node.hasObjects = true
         return true
@@ -143,7 +143,7 @@ export class QuadTree {
     if (!client.node) return
     let objects = client.node.objects
     const index = objects.indexOf(client)
-    const removed = Utils.removeElement(objects,index)
+    const removed = Utils.removeElement(objects, index)
     if (removed === null) return false
     return true
   }
@@ -153,10 +153,10 @@ export class QuadTree {
    * @param {Client<T,QuadTreeNode<T>>[]} clients 
    * @param {BoundingBox[]} bounds 
    */
-  update(clients,bounds) {
+  update(clients, bounds) {
     for (var i = 0; i < clients.length; i++) {
       this.remove(clients[i])
-      this.insert(clients[i],bounds[i],this._root)
+      this.insert(clients[i], bounds[i], this.root)
     }
   }
   /**
@@ -167,17 +167,17 @@ export class QuadTree {
    * @param {QueryFunc<QuadTreeNode<T>,T>} [func=approxQuery] 
    * @returns {T[]}
    */
-  query(bounds,target = [],func = approxQuery,node = this._root) {
-    if (!Overlaps.AABBColliding(node.bounds,bounds))
+  query(bounds, target = [], func = approxQuery, node = this.root) {
+    if (!Overlaps.AABBColliding(node.bounds, bounds))
       return target
     if (node.children.length) {
-      this.query(bounds,target,func,node.children[0])
-      this.query(bounds,target,func,node.children[1])
-      this.query(bounds,target,func,node.children[2])
-      this.query(bounds,target,func,node.children[3])
+      this.query(bounds, target, func, node.children[0])
+      this.query(bounds, target, func, node.children[1])
+      this.query(bounds, target, func, node.children[2])
+      this.query(bounds, target, func, node.children[3])
     }
     for (let i = 0; i < node.objects.length; i++) {
-      if (func(node.objects[i],bounds))
+      if (func(node.objects[i], bounds))
         target.push(node.objects[i].value)
     }
     return target
@@ -188,14 +188,14 @@ export class QuadTree {
    * @param {U[]} [out]
    *  @returns {U[]}
    */
-  traverseAll(func,out = [],node = this._root) {
+  traverseAll(func, out = [], node = this.root) {
     if (node.children.length) {
-      this.traverseAll(func,out,node.children[0])
-      this.traverseAll(func,out,node.children[1])
-      this.traverseAll(func,out,node.children[2])
-      this.traverseAll(func,out,node.children[3])
+      this.traverseAll(func, out, node.children[0])
+      this.traverseAll(func, out, node.children[1])
+      this.traverseAll(func, out, node.children[2])
+      this.traverseAll(func, out, node.children[3])
     }
-    func(node,out)
+    func(node, out)
     return out
   }
   /**
@@ -235,7 +235,7 @@ export class QuadTree {
    * @param {number} depth Empty array to store results.
    * @param {QuadTreeNode<T>} node 
    * */
-  split(depth,node = this._root) {
+  split(depth, node = this.root) {
     if (depth <= 0) return
     const w = (node.bounds.max.x - node.bounds.min.x) / 2
     const h = (node.bounds.max.y - node.bounds.min.y) / 2
@@ -279,8 +279,55 @@ export class QuadTree {
     node.add(bottomLeft)
     node.add(bottomRight)
     node.children.forEach(
-      e => this.split(depth - 1,e)
+      e => this.split(depth - 1, e)
     )
+  }
+  /**
+   * @ignore
+   */
+  getCollisionPairs(func) {
+    return QuadTree.getCollisionPairs(this, func, [])
+  }
+  /**
+   * @template T
+   * @template U
+   * @param {QuadTree<T>} tree
+   * @param {CollisionChecker<T,QuadTreeNode<T>,U>} func
+   * @param {U[]} target
+   */
+  static getCollisionPairs(tree, func, target = []) {
+    if (!tree.root) return []
+    //const nodestack = [tree.root]
+    const stack = []
+
+    QuadTree.getPairsNode(tree.root, target, stack, func)
+    return target
+  }
+  /**
+   * @private
+  */
+  static getPairsNode(node, target, stack, func) {
+    if (!node.hasObjects) return
+    if (!node.isLeafNode()) {
+      Utils.appendArr(stack, node.objects)
+      for (let i = 0; i < 4; i++) {
+        QuadTree.getPairsNode(node.children[i], target, stack, func)
+      }
+      Utils.popArr(stack, node.objects.length)
+    }
+    for (let i = 0; i < node.objects.length; i++) {
+      for (let j = i + 1; j < node.objects.length; j++) {
+        const f = func(node.objects[i], node.objects[j])
+        if (f) target.push(f)
+      }
+    }
+
+    for (let i = 0; i < node.objects.length; i++) {
+      for (let j = 0; j < stack.length; j++) {
+        const f = func(node.objects[i], stack[j])
+        if (f) target.push(f)
+      }
+    }
   }
 }
 /**
@@ -289,7 +336,7 @@ export class QuadTree {
  * @param {BoundingBox} _bound 
  * @returns 
  */
-function approxQuery(_client,_bound) {
+function approxQuery(_client, _bound) {
   return true
 }
 
@@ -302,4 +349,10 @@ function approxQuery(_client,_bound) {
  * @template T
  * @template U
  * @typedef {import("./types.js").TraverserFunc<T,U>} TraverserFunc
+ */
+/**
+ * @template T
+ * @template U
+ * @template V
+ * @typedef {import("./types.js").CollisionChecker<T,U,V>} CollisionChecker
  */
