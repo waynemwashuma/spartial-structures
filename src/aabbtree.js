@@ -50,13 +50,9 @@ export class AabbTree {
    */
   _pool = new Pool(0, () => new AabbTreeNode())
   /**
-   * 
-   * @param {Vector2} padding 
+   * @type {AabbTreeNode<T> | null}
    */
-  constructor(padding = new Vector2(0, 0)) {
-    this.root = null
-    this.padding = padding
-  }
+   root = null
   /**
    * @private
    * @param {AabbTreeNode<T> |null} node
@@ -139,9 +135,6 @@ export class AabbTree {
     node.value = client
     client.node = node
     node.bounds.copy(bound)
-
-    Vector2.prototype.sub.call(node.bounds.min, this.padding)
-    Vector2.prototype.add.call(node.bounds.max, this.padding)
 
     if (!this.root) {
       this.root = node

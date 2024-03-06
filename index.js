@@ -12,7 +12,7 @@ const canvasBound = new BoundingBox(
 )
 const bound = new BoundingBox(0, 0, renderer.width + 20, renderer.height + 20)
 const quadtree = new QuadTree(bound, 3);
-const aabbtree = new AabbTree(new Vector2(15, 15))
+const aabbtree = new AabbTree()
 const GRID_NUMBER = 20
 const grid = new HashGrid(
   renderer.width / GRID_NUMBER, renderer.height / GRID_NUMBER,
