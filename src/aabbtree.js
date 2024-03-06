@@ -33,6 +33,9 @@ class AabbTreeNode {
    * @param {AabbTreeNode<T>} node2
    * @param {AabbTreeNode<T>} out
    */
+  hasChildren() {
+    return this.right && this.left
+  }
   static union(node1, node2, out = new AabbTreeNode()) {
     BoundingBox.union(node1.bounds, node2.bounds, out.bounds)
     return out
@@ -248,6 +251,57 @@ export class AabbTree {
       this._pool.take(this._resetNode(current))
     }
   }
+  /**
+   * @ignore
+   */
+  getCollisionPairs(func, clients) {
+    return AabbTree.getCollisionPairUsingClients(this, func, clients, [])
+  }
+  /**
+   * @template T
+   * @template U
+   * @param {AabbTree<T>} tree
+   * @param {CollisionChecker<T,number[],U>} func
+   * @param {U[]} target
+   */
+  static getCollisionPairs(tree, func, target = []) {}
+  /**
+   * @template T
+   * @template U
+   * @param {AabbTree<T>} tree
+   * @param {CollisionChecker<T,number[],U>} func
+   * @param {Client<T,number[]>}
+   * @param {U[]} target
+   */
+  static getCollisionPairUsingClients(tree, func, clients, target = []) {
+    for (let i = 0; i < clients.length; i++) {
+      AabbTree.getCollisionPairUsingClient(tree, clients[i], func, target)
+    }
+    return target
+  }
+  /**
+   * @template T
+   * @template U
+   * @param {Client<T,AabbTreeNode<T>>} client
+   * @param {CollisionChecker<T,AabbTreeNode<T>,U>} func
+   * @param {U[]} target
+   */
+  static getCollisionPairUsingClient(tree, client, func, target) {
+    const nodes = [tree.root]
+    while (nodes.length) {
+      const node = nodes.pop()
+
+      if (!node.bounds.intersects(client.node.bounds)) continue
+      if (node.hasChildren()) {
+        nodes.push(node.left)
+        nodes.push(node.right)
+      }
+      if (!node.value) continue
+      if (node.value === client) continue
+      const t = func(node.value, client)
+      if (t) target.push(t)
+    }
+  }
 }
 /**
  * @param {BoundingBox} bounds
@@ -278,4 +332,10 @@ function calcArea(bounds) {
  * @template T
  * @template U
  * @typedef {import("./types.js").TraverserFunc<T,U>} TraverserFunc
+ */
+/**
+ * @template T
+ * @template U
+ * @template V
+ * @typedef {import("./types.js").CollisionChecker<T,U,V>} CollisionChecker
  */
