@@ -7,10 +7,10 @@ renderer.setViewport(innerWidth, innerHeight)
 setTimeout(_ => renderer.play())
 renderer.bindTo("#can")
 const canvasBound = new BoundingBox(
-  0, 0,
-  renderer.width, renderer.height
+  20, 20,
+  renderer.width - 20, renderer.height - 20
 )
-const bound = new BoundingBox(-20, -20, renderer.width + 20, renderer.height + 20)
+const bound = new BoundingBox(0, 0, renderer.width + 20, renderer.height + 20)
 const quadtree = new QuadTree(bound, 3);
 const aabbtree = new AabbTree(new Vector2(15, 15))
 const GRID_NUMBER = 20
@@ -21,7 +21,7 @@ const grid = new HashGrid(
   new Vector2(0, 0)
 )
 
-demoGrid(quadtree, renderer, 300)
+demoGrid(grid, renderer, 30)
 renderer.update()
 
 function demoGrid(grid, renderer, number = 10) {
@@ -32,17 +32,18 @@ function demoGrid(grid, renderer, number = 10) {
       translate_bound(bounds, i => [velocity[i].x, velocity[i].y])
       bounceoff(canvasBound, velocity, bounds)
       grid.update(clients, bounds)
-      const collided = quadtree.getCollisionPairs(checker)
-        .map(e => [bounds[e.a], bounds[e.b]])
-        .reduce((a, b) => b.concat(a), [])
+      const collided = grid.getCollisionPairs(checker,clients)
+        .flatMap(e => [bounds[e.b], bounds[e.b]])
+      
       grid.draw(ctx)
       ctx.strokeStyle = "white"
       bounds.forEach(b => renderObj(ctx, b))
       ctx.strokeStyle = "red"
-      
+
       //we are actually redrawing more than 
       //twice if the object is involved in 
-      //more than one collision 
+      //more than one collision but it doesn't
+      //matter in a test.
       collided.forEach(b => renderObj(ctx, b))
     }
   })
