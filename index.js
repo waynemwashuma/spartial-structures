@@ -2,39 +2,66 @@ import { Renderer2D, Vector2, BoundingBox, rand } from "./chaos.module.js"
 import { Client } from "./src/client.js"
 import { QuadTree, HashGrid, AabbTree, renderObj } from "./src/index.js"
 
+let entityCount = 30
+const GRID_NUMBER = 20
 const renderer = new Renderer2D()
 renderer.setViewport(innerWidth, innerHeight)
-setTimeout(_ => renderer.play())
+renderer.play()
 renderer.bindTo("#can")
 const canvasBound = new BoundingBox(
   20, 20,
   renderer.width - 20, renderer.height - 20
 )
 const bound = new BoundingBox(0, 0, renderer.width + 20, renderer.height + 20)
-const quadtree = new QuadTree(bound, 3);
-const aabbtree = new AabbTree()
-const GRID_NUMBER = 20
-const grid = new HashGrid(
-  renderer.width / GRID_NUMBER, renderer.height / GRID_NUMBER,
-  GRID_NUMBER,
-  GRID_NUMBER,
-  new Vector2(0, 0)
-)
+const spartialStructures = {
+  "Quad Tree": new QuadTree(bound, 3),
+  "AABB Tree": new AabbTree(),
+  "Hash Grid": new HashGrid(
+    renderer.width / GRID_NUMBER, renderer.height / GRID_NUMBER,
+    GRID_NUMBER,
+    GRID_NUMBER,
+    new Vector2(0, 0)
+  )
+}
+initSelection()
 
-demoGrid(aabbtree, renderer, 30)
-renderer.update()
+function initSelection() {
+  const selection = document.createElement("select")
+  selection.id = "options"
+
+  for (const name in spartialStructures) {
+    const opt = document.createElement("option")
+    opt.innerHTML = name
+    opt.value = name
+    selection.append(opt)
+  }
+  selection.onchange = (event) => {
+    const struct = spartialStructures[event.target.value]
+
+    demoGrid(struct, renderer, entityCount)
+  }
+
+  for (const name in spartialStructures) {
+    const struct = spartialStructures[name]
+
+    demoGrid(struct, renderer, entityCount)
+    break
+  }
+  
+  document.body.append(selection)
+}
 
 function demoGrid(grid, renderer, number = 10) {
-  renderer.clear()
+  renderer.objects = []
   const [velocity, bounds, clients] = createObjs(renderer.width - 100, renderer.height - 100, 50, 50, number)
   renderer.add({
     render(ctx) {
       translate_bound(bounds, i => [velocity[i].x, velocity[i].y])
       bounceoff(canvasBound, velocity, bounds)
       grid.update(clients, bounds)
-      const collided = grid.getCollisionPairs(checker,clients)
+      const collided = grid.getCollisionPairs(checker, clients)
         .flatMap(e => [bounds[e.b], bounds[e.b]])
-      
+
       grid.draw(ctx)
       ctx.strokeStyle = "white"
       bounds.forEach(b => renderObj(ctx, b))
