@@ -60,7 +60,7 @@ function demoGrid(grid, renderer, number = 10) {
       bounceoff(canvasBound, velocity, bounds)
       grid.update(clients, bounds)
       const collided = grid.getCollisionPairs(checker, clients)
-        .flatMap(e => [bounds[e.b], bounds[e.b]])
+        .flatMap(e => [bounds[e.a], bounds[e.b]])
 
       grid.draw(ctx)
       ctx.strokeStyle = "white"
