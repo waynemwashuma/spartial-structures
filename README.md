@@ -1,3 +1,6 @@
-# Quadree demo
+# Spartial structures demo
 
- This is a quadtree demo on 2d canvas.
+ This is demo houses spartial AABB collision on a 2d canvas for:
+  - Quad tree
+  - Hash Grid
+  - AABB Tree
